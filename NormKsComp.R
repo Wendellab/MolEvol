@@ -1,15 +1,10 @@
-#Q2: How do the subgenomes differ in their evolutionary rates in the ABP?
-#H0: The homoeologous genes of both subgenomes evolve at similar rates due to 
-#similar selective forces.
-#HA: The homoeologous genes from each subgenome evolve at different rates due to
-#selective forces unique to each subgenome.
-#How: Using prior rates of substitutions to normalize for differential distances 
-#between diploids (in Flagel et al 2012), determine if the distance is greater 
-#between D-DT or A-AT.  
-
 library(seqinr)
 
 #use kaks function of seqinr or use KaKs_Calculator files?
+ad1.norm.factor = 0.6 #This is the normalization factor for proper comparison of
+#At and Dt sequences.  A to At rate/D to Dt rate for AD1.
+ad2.norm.factor = 5/9 #normalization factor for AD2, same calculation as above
+
 files <- list.files(pattern = "Gorai.*fasta$")
 key <- read.table("key_anthocyanin.orthoMCL.txt", header = TRUE)
 
@@ -28,15 +23,77 @@ ad2.d <- lapply(ad2,paste,"D", sep = ".")
 
 for(i in 1:length(antho.files)){
   fas.aln <- read.alignment(file = antho.files[i],format = "fasta")
-  At.index <- unlist(lapply(ad1.a,grep,x = fas.aln$nam))
-  Dt.index <- unlist(lapply(ad1.d,grep,x = fas.aln$nam))
+  At.index.ad1 <- unlist(lapply(ad1.a,grep,x = fas.aln$nam))
+  Dt.index.ad1 <- unlist(lapply(ad1.d,grep,x = fas.aln$nam))
+  At.index.ad2 <- unlist(lapply(ad2.a,grep,x = fas.aln$nam))
+  Dt.index.ad2 <- unlist(lapply(ad2.d,grep,x = fas.aln$nam))  
   D5.index <- grep("^D5",fas.aln$nam)
   A2.index <- grep("^A2",fas.aln$nam)
   K.table <- kaks(fas.aln)
-  A.Ks <- as.matrix(K.table$ks)[A2.index,c(At.index)]
-  D.Ks <- as.matrix(K.table$ks)[D5.index,c(Dt.index)]
-  D.Ks.adj <- D.Ks*0.6
-  result <- wilcox.test(x = A.Ks, y = D.Ks.adj,)
-  print(c(antho.files[i],result$statistic,result$p.value,result$method))
+  A.Ks.ad1 <- as.matrix(K.table$ks)[A2.index,c(At.index.ad1)]
+  A.Ks.ad1.avg <- mean(A.Ks.ad1)
+  D.Ks.ad1 <- as.matrix(K.table$ks)[D5.index,c(Dt.index.ad1)]
+  D.Ks.ad1.avg <- mean(D.Ks.ad1)
+  A.Ks.ad2 <- as.matrix(K.table$ks)[A2.index,c(At.index.ad2)]
+  A.Ks.ad2.avg <- mean(A.Ks.ad2)
+  D.Ks.ad2 <- as.matrix(K.table$ks)[D5.index,c(Dt.index.ad2)]
+  D.Ks.ad2.avg <- mean(D.Ks.ad2)
+  D.Ks.ad1.adj <- D.Ks.ad1*ad1.norm.factor
+  D.Ks.ad1.adj.avg <- mean(D.Ks.ad1.adj)
+  D.Ks.ad2.adj <- D.Ks.ad2*ad2.norm.factor
+  D.Ks.ad2.adj.avg <- mean(D.Ks.ad2.adj)
+  ad1.result <- try(wilcox.test(x = A.Ks.ad1, y = D.Ks.ad1.adj))
+  if(inherits(ad1.result,"try-error")){
+    ad1.result$statistic <- NA
+    ad1.result$p.value <- NA
+    ad1.result$method <- NA
+  }
+  ad2.result <- try(wilcox.test(x = A.Ks.ad2, y = D.Ks.ad2.adj))
+  if(inherits(ad2.result,"try-error")){
+    ad2.result$statistic <- NA
+    ad2.result$p.value <- NA
+    ad2.result$method <- NA
+  }
+  write(c(antho.files[i],A.Ks.ad1.avg,D.Ks.ad1.avg,D.Ks.ad1.adj.avg,ad1.result$statistic,ad1.result$p.value,ad1.result$method),file = "NormKsCompResultsAD1.txt",ncolumns = 7,sep = "\t",append =TRUE)
+  write(c(antho.files[i],A.Ks.ad2.avg,D.Ks.ad2.avg,D.Ks.ad2.adj.avg,ad2.result$statistic,ad2.result$p.value,ad2.result$method),file = "NormKsCompResultsAD2.txt",ncolumns = 7,sep = "\t",append =TRUE)
 }
 
+ad1.norm.factor <- 2/3
+ad2.norm.factor <- 2/3
+
+for(i in 1:length(antho.files)){
+  fas.aln <- read.alignment(file = antho.files[i],format = "fasta")
+  At.index.ad1 <- unlist(lapply(ad1.a,grep,x = fas.aln$nam))
+  Dt.index.ad1 <- unlist(lapply(ad1.d,grep,x = fas.aln$nam))
+  At.index.ad2 <- unlist(lapply(ad2.a,grep,x = fas.aln$nam))
+  Dt.index.ad2 <- unlist(lapply(ad2.d,grep,x = fas.aln$nam))  
+  D5.index <- grep("^D5",fas.aln$nam)
+  A2.index <- grep("^A2",fas.aln$nam)
+  K.table <- kaks(fas.aln)
+  A.Ka.ad1 <- as.matrix(K.table$ka)[A2.index,c(At.index.ad1)]
+  A.Ka.ad1.avg <- mean(A.Ka.ad1)
+  D.Ka.ad1 <- as.matrix(K.table$ka)[D5.index,c(Dt.index.ad1)]
+  D.Ka.ad1.avg <- mean(D.Ka.ad1)
+  A.Ka.ad2 <- as.matrix(K.table$ka)[A2.index,c(At.index.ad2)]
+  A.Ka.ad2.avg <- mean(A.Ka.ad2)
+  D.Ka.ad2 <- as.matrix(K.table$ka)[D5.index,c(Dt.index.ad2)]
+  D.Ka.ad2.avg <- mean(D.Ka.ad2)
+  D.Ka.ad1.adj <- D.Ka.ad1*ad1.norm.factor
+  D.Ka.ad1.adj.avg <- mean(D.Ka.ad1.adj)
+  D.Ka.ad2.adj <- D.Ka.ad2*ad2.norm.factor
+  D.Ka.ad2.adj.avg <- mean(D.Ka.ad2.adj)
+  ad1.result <- try(wilcox.test(x = A.Ka.ad1, y = D.Ka.ad1.adj))
+  if(inherits(ad1.result,"try-error")){
+    ad1.result$statistic <- NA
+    ad1.result$p.value <- NA
+    ad1.result$method <- NA
+  }
+  ad2.result <- try(wilcox.test(x = A.Ka.ad2, y = D.Ka.ad2.adj))
+  if(inherits(ad2.result,"try-error")){
+    ad2.result$statistic <- NA
+    ad2.result$p.value <- NA
+    ad2.result$method <- NA
+  }
+  write(c(antho.files[i],A.Ka.ad1.avg,D.Ka.ad1.avg,D.Ka.ad1.adj.avg,ad1.result$statistic,ad1.result$p.value,ad1.result$method),file = "NormKaCompResultsAD1.txt",ncolumns = 7,sep = "\t",append =TRUE)
+  write(c(antho.files[i],A.Ka.ad2.avg,D.Ka.ad2.avg,D.Ka.ad2.adj.avg,ad2.result$statistic,ad2.result$p.value,ad2.result$method),file = "NormKaCompResultsAD2.txt",ncolumns = 7,sep = "\t",append =TRUE)
+}
